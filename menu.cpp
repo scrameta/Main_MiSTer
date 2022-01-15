@@ -5256,7 +5256,7 @@ void HandleUI(void)
 					minimig_config.hardfile[3].cfg)) ? "/HD" : "",
 				config_memory_chip_msg[minimig_config.memory & 0x03],
 				fastcfg ? "+" : "",
-				fastcfg ? config_memory_fast_msg[(minimig_config.cpu>>1) & 1][fastcfg] : "",
+				fastcfg ? config_memory_fast_msg[minimig_config.cpu > 0][fastcfg] : "",
 				((minimig_config.memory >> 2) & 0x03) ? "+" : "",
 				((minimig_config.memory >> 2) & 0x03) ? config_memory_slow_msg[(minimig_config.memory >> 2) & 0x03] : "",
 				(minimig_config.memory & 0x40) ? " HRT" : ""
@@ -5294,7 +5294,7 @@ void HandleUI(void)
 		OsdWrite(m++, s, menusub == 0, 0);
 		strcpy(s, " D-Cache  : ");
 		strcat(s, (minimig_config.cpu & 16) ? "ON" : "OFF");
-		OsdWrite(m++, s, menusub == 1, !(minimig_config.cpu & 0x2));
+		OsdWrite(m++, s, menusub == 1, !(minimig_config.cpu > 0));
 		OsdWrite(m++, "", 0, 0);
 		strcpy(s, " Chipset  : ");
 		strcat(s, config_chipset_msg[(minimig_config.chipset >> 2) & 7]);
@@ -5303,7 +5303,7 @@ void HandleUI(void)
 		strcat(s, config_memory_chip_msg[minimig_config.memory & 0x03]);
 		OsdWrite(m++, s, menusub == 3, 0);
 		strcpy(s, " FastRAM  : ");
-		strcat(s, config_memory_fast_msg[(minimig_config.cpu >> 1) & 1][((minimig_config.memory >> 4) & 0x03) | ((minimig_config.memory & 0x80) >> 5)]);
+		strcat(s, config_memory_fast_msg[minimig_config.cpu > 0][((minimig_config.memory >> 4) & 0x03) | ((minimig_config.memory & 0x80) >> 5)]);
 		OsdWrite(m++, s, menusub == 4, 0);
 		strcpy(s, " SlowRAM  : ");
 		strcat(s, config_memory_slow_msg[(minimig_config.memory >> 2) & 0x03]);
@@ -5342,8 +5342,19 @@ void HandleUI(void)
 		{
 			if (menusub == 0)
 			{
+				int cpuadj = (minimig_config.cpu & 3);
+				if (minus)
+				{	
+					cpuadj = cpuadj-1;
+					if (cpuadj<0) cpuadj = 2;
+				}
+				if (plus || select) 
+				{
+					cpuadj = cpuadj+1;
+					if (cpuadj==3) cpuadj = 0;
+				}
 				menustate = MENU_MINIMIG_CHIPSET1;
-				minimig_config.cpu = (minimig_config.cpu & 0xfc) | ((minimig_config.cpu & 1) ? 0 : 3);
+				minimig_config.cpu = (minimig_config.cpu & 0xfc) | cpuadj;
 				minimig_ConfigCPU(minimig_config.cpu);
 			}
 			/*
@@ -5360,7 +5371,7 @@ void HandleUI(void)
 				minimig_ConfigCPU(minimig_config.cpu);
 			}
 			*/
-			else if (menusub == 1 && (minimig_config.cpu & 0x2))
+			else if (menusub == 1 && (minimig_config.cpu > 0))
 			{
 				menustate = MENU_MINIMIG_CHIPSET1;
 				minimig_config.cpu ^= 16;
@@ -5420,13 +5431,13 @@ void HandleUI(void)
 				{
 					c--;
 					if (c < 0) c = 5;
-					if (!(minimig_config.cpu & 2) && c > 3) c = 3;
+					if (!(minimig_config.cpu > 0) && c > 3) c = 3;
 				}
 				else
 				{
 					c++;
 					if (c > 5) c = 0;
-					if (!(minimig_config.cpu & 2) && c > 3) c = 0;
+					if (!(minimig_config.cpu > 0) && c > 3) c = 0;
 				}
 				minimig_config.memory = ((c << 4) & 0x30) | ((c << 5) & 0x80) | (minimig_config.memory & ~0xB0);
 				menustate = MENU_MINIMIG_CHIPSET1;
@@ -5490,8 +5501,8 @@ void HandleUI(void)
 		OsdWrite(m++, s, menusub == 0, 0);
 		strcpy(s, " Fast-IDE (68020)  : ");
 		strcat(s, (minimig_config.ide_cfg & 0x20) ? "Off" : "On");
-		OsdWrite(m++, s, menusub == 1,  !(minimig_config.ide_cfg & 1) || !(minimig_config.cpu & 2));
-		if (!(minimig_config.cpu & 2)) menumask &= ~2;
+		OsdWrite(m++, s, menusub == 1,  !(minimig_config.ide_cfg & 1) || !(minimig_config.cpu > 0));
+		if (!(minimig_config.cpu > 0)) menumask &= ~2;
 		OsdWrite(m++);
 
 		{
