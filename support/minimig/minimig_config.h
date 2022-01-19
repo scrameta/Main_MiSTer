@@ -83,4 +83,6 @@ void minimig_ConfigAutofire(unsigned char autofire, unsigned char mask);
 void minimig_set_extcfg(unsigned int ext_cfg);
 unsigned int minimig_get_extcfg();
 
+int minimig_020plus(unsigned int cpu);
+
 #endif
