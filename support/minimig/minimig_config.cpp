@@ -782,5 +782,5 @@ unsigned int minimig_get_extcfg()
 
 int minimig_020plus(unsigned int cpu)
 {
-	return (minimig_config.cpu&3);
+	return ((cpu&3) ? 1 : 0);
 }
