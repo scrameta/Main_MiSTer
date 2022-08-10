@@ -257,6 +257,10 @@ static void fdd_set(int num, char* filename)
 	printf("  total_sectors: %d\n\n", floppy_total_sectors);
 
 	uint32_t subaddr = num << 7;
+
+	IOWR(FDD0_BASE + subaddr, 0x0, 0); // Always eject floppy before insertion
+	usleep(100000);
+
 	IOWR(FDD0_BASE + subaddr, 0x0, floppy ? 1 : 0);
 	IOWR(FDD0_BASE + subaddr, 0x1, (floppy && (fdd_image->mode & O_RDWR)) ? 0 : 1);
 	IOWR(FDD0_BASE + subaddr, 0x2, floppy_cylinders);
@@ -293,19 +297,19 @@ static uint8_t bin2bcd(unsigned val)
 
 void x86_init()
 {
-	user_io_8bit_set_status(UIO_STATUS_RESET, UIO_STATUS_RESET);
+	user_io_status_set("[0]", 1);
 
 	const char *home = HomeDir();
 
 	load_bios(user_io_make_filepath(home, "boot0.rom"), 0);
 	load_bios(user_io_make_filepath(home, "boot1.rom"), 1);
 
-	uint8_t cfg = ide_check();
+	uint16_t cfg = ide_check();
 	uint8_t hotswap[4] = {
 		0,
 		0,
-		((cfg >> 8) & 1) ^ 1,
-		(cfg >> 9) & 1,
+		(uint8_t)(((cfg >> 8) & 1) ^ 1),
+		(uint8_t)((cfg >> 9) & 1),
 	};
 	ide_reset(hotswap);
 
@@ -417,7 +421,7 @@ void x86_init()
 	for (unsigned int i = 0; i < sizeof(cmos) / sizeof(cmos[0]); i++) IOWR(RTC_BASE, i, cmos[i]);
 
 	x86_share_reset();
-	user_io_8bit_set_status(0, UIO_STATUS_RESET);
+	user_io_status_set("[0]", 0);
 }
 
 static void fdd_io(uint8_t read)
@@ -523,17 +527,25 @@ void x86_set_image(int num, char *filename)
 	else if (ide_is_placeholder(num - 2)) hdd_set(num - 2, filename);
 }
 
+static char* get_config_name()
+{
+	static char str[256];
+	snprintf(str, sizeof(str), "%ssys.cfg", user_io_get_core_name());
+	return str;
+}
+
+
 void x86_config_save()
 {
 	config.ver = CFG_VER;
-	FileSaveConfig("ao486sys.cfg", &config, sizeof(config));
+	FileSaveConfig(get_config_name(), &config, sizeof(config));
 }
 
 void x86_config_load()
 {
 	static x86_config tmp;
 	memset(&config, 0, sizeof(config));
-	if (FileLoadConfig("ao486sys.cfg", &tmp, sizeof(tmp)) && (tmp.ver == CFG_VER))
+	if (FileLoadConfig(get_config_name(), &tmp, sizeof(tmp)) && (tmp.ver == CFG_VER))
 	{
 		memcpy(&config, &tmp, sizeof(config));
 	}

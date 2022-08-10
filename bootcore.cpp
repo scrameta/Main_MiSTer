@@ -11,14 +11,14 @@
 #include <dirent.h>
 
 
-extern int arcade_load(const char *xml);
+extern int xml_load(const char *xml);
 int16_t btimeout;
 char bootcoretype[64];
 
 bool isExactcoreName(char *path)
 {
 	char *spl = strrchr(path, '.');
-	return (spl && (!strcmp(spl, ".rbf") || !strcmp(spl, ".mra")));
+	return (spl && (!strcmp(spl, ".rbf") || !strcmp(spl, ".mra") || !strcmp(spl, ".mgl")));
 }
 
 char *getcoreName(char *path)
@@ -148,7 +148,7 @@ char *findCore(const char *name, char *coreName, int indent)
 			snprintf(path, 256, "%s/%s", name, entry->d_name);
 			if (strstr(path, coreName) != NULL) {
 				spl = strrchr(path, '.');
-				if (spl && (!strcmp(spl, ".rbf") || !strcmp(spl, ".mra")))
+				if (spl && (!strcmp(spl, ".rbf") || !strcmp(spl, ".mra") || !strcmp(spl, ".mgl")))
 				{
 					closedir(dir);
 					return path;
@@ -206,7 +206,7 @@ void bootcore_init(const char *path)
 			{
 				if (!cfg.bootcore_timeout)
 				{
-					isMraName(bootcore) ? arcade_load(bootcore) : fpga_load_rbf(bootcore);
+					isXmlName(bootcore) ? xml_load(bootcore) : fpga_load_rbf(bootcore);
 				}
 
 				strcpy(cfg.bootcore, strcmp(bootcore, "menu.rbf") ? bootcore : "");
@@ -219,7 +219,7 @@ void bootcore_init(const char *path)
 	{
 
 		strcpy(auxstr, path);
-		auxpointer = (!strcmp(cfg.bootcore, "lastexactcore") || isMraName(auxstr)) ? getcoreExactName(auxstr) : getcoreName(auxstr);
+		auxpointer = (!strcmp(cfg.bootcore, "lastexactcore") || isXmlName(auxstr)) ? getcoreExactName(auxstr) : getcoreName(auxstr);
 
 		if (auxpointer != NULL)
 		{

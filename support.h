@@ -37,3 +37,9 @@
 
 // PSX support
 #include "support/psx/psx.h"
+
+// UEF support
+#include "support/uef/uef_reader.h"
+
+// Saturn  support
+#include "support/saturn/saturn.h"

@@ -11,6 +11,7 @@
 #include "debug.h"
 #include "file_io.h"
 #include "user_io.h"
+#include "video.h"
 
 cfg_t cfg;
 
@@ -44,12 +45,12 @@ static const ini_var_t ini_vars[] =
 	{ "VIDEO_INFO", (void*)(&(cfg.video_info)), UINT8, 0, 10 },
 	{ "VSYNC_ADJUST", (void*)(&(cfg.vsync_adjust)), UINT8, 0, 2 },
 	{ "HDMI_AUDIO_96K", (void*)(&(cfg.hdmi_audio_96k)), UINT8, 0, 1 },
-	{ "DVI_MODE", (void*)(&(cfg.dvi)), UINT8, 0, 1 },
+	{ "DVI_MODE", (void*)(&(cfg.dvi_mode)), UINT8, 0, 1 },
 	{ "HDMI_LIMITED", (void*)(&(cfg.hdmi_limited)), UINT8, 0, 2 },
 	{ "KBD_NOMOUSE", (void*)(&(cfg.kbd_nomouse)), UINT8, 0, 1 },
 	{ "MOUSE_THROTTLE", (void*)(&(cfg.mouse_throttle)), UINT8, 1, 100 },
 	{ "BOOTSCREEN", (void*)(&(cfg.bootscreen)), UINT8, 0, 1 },
-	{ "VSCALE_MODE", (void*)(&(cfg.vscale_mode)), UINT8, 0, 3 },
+	{ "VSCALE_MODE", (void*)(&(cfg.vscale_mode)), UINT8, 0, 5 },
 	{ "VSCALE_BORDER", (void*)(&(cfg.vscale_border)), UINT16, 0, 399 },
 	{ "RBF_HIDE_DATECODE", (void*)(&(cfg.rbf_hide_datecode)), UINT8, 0, 1 },
 	{ "MENU_PAL", (void*)(&(cfg.menu_pal)), UINT8, 0, 1 },
@@ -64,8 +65,8 @@ static const ini_var_t ini_vars[] =
 	{ "GAMEPAD_DEFAULTS", (void*)(&(cfg.gamepad_defaults)), UINT8, 0, 1 },
 	{ "RECENTS", (void*)(&(cfg.recents)), UINT8, 0, 1 },
 	{ "CONTROLLER_INFO", (void*)(&(cfg.controller_info)), UINT8, 0, 10 },
-	{ "REFRESH_MIN", (void*)(&(cfg.refresh_min)), UINT8, 0, 150 },
-	{ "REFRESH_MAX", (void*)(&(cfg.refresh_max)), UINT8, 0, 150 },
+	{ "REFRESH_MIN", (void*)(&(cfg.refresh_min)), FLOAT, 0, 150 },
+	{ "REFRESH_MAX", (void*)(&(cfg.refresh_max)), FLOAT, 0, 150 },
 	{ "JAMMA_VID", (void*)(&(cfg.jamma_vid)), UINT16, 0, 0xFFFF },
 	{ "JAMMA_PID", (void*)(&(cfg.jamma_pid)), UINT16, 0, 0xFFFF },
 	{ "SNIPER_MODE", (void*)(&(cfg.sniper_mode)), UINT8, 0, 1 },
@@ -90,6 +91,16 @@ static const ini_var_t ini_vars[] =
 	{ "LOG_FILE_ENTRY", (void*)(&(cfg.log_file_entry)), UINT8, 0, 1 },
 	{ "BT_AUTO_DISCONNECT", (void*)(&(cfg.bt_auto_disconnect)), UINT32, 0, 180 },
 	{ "BT_RESET_BEFORE_PAIR", (void*)(&(cfg.bt_reset_before_pair)), UINT8, 0, 1 },
+	{ "WAITMOUNT", (void*)(&(cfg.waitmount)), STRING, 0, sizeof(cfg.waitmount) - 1 },
+	{ "RUMBLE", (void *)(&(cfg.rumble)), UINT8, 0, 1},
+	{ "WHEEL_FORCE", (void*)(&(cfg.wheel_force)), UINT8, 0, 100 },
+	{ "WHEEL_RANGE", (void*)(&(cfg.wheel_range)), UINT16, 0, 1000 },
+	{ "HDMI_GAME_MODE", (void *)(&(cfg.hdmi_game_mode)), UINT8, 0, 1},
+	{ "VRR_MODE", (void *)(&(cfg.vrr_mode)), UINT8, 0, 3},
+	{ "VRR_MIN_FRAMERATE", (void *)(&(cfg.vrr_min_framerate)), UINT8, 0, 255},
+	{ "VRR_MAX_FRAMERATE", (void *)(&(cfg.vrr_max_framerate)), UINT8, 0, 255},
+	{ "VRR_VESA_FRAMERATE", (void *)(&(cfg.vrr_vesa_framerate)), UINT8, 0, 255},
+	{ "VIDEO_OFF", (void*)(&(cfg.video_off)), INT16, 0, 3600 },
 };
 
 static const int nvars = (int)(sizeof(ini_vars) / sizeof(ini_var_t));
@@ -108,7 +119,7 @@ static const int nvars = (int)(sizeof(ini_vars) / sizeof(ini_var_t));
                                  ((c) == '-') || ((c) == '+') || ((c) == '/') || ((c) == '=') || \
                                  ((c) == '#') || ((c) == '$') || ((c) == '@') || ((c) == '_') || \
                                  ((c) == ',') || ((c) == '.') || ((c) == '!') || ((c) == '*') || \
-                                 ((c) == ':'))
+                                 ((c) == ':') || ((c) == '~'))
 
 #define CHAR_IS_VALID(c)        (CHAR_IS_ALPHANUM(c) || CHAR_IS_SPECIAL(c))
 #define CHAR_IS_SPACE(c)        (((c) == ' ') || ((c) == '\t'))
@@ -118,6 +129,9 @@ static const int nvars = (int)(sizeof(ini_vars) / sizeof(ini_var_t));
 
 
 fileTYPE ini_file;
+
+static bool has_video_sections = false;
+static bool using_video_section = false;
 
 int ini_pt = 0;
 static char ini_getch()
@@ -146,7 +160,7 @@ static int ini_getline(char* line)
 	return c == 0;
 }
 
-static int ini_get_section(char* buf)
+static int ini_get_section(char* buf, const char *vmode)
 {
 	int i = 0;
 	int incl = (buf[0] == INCL_SECTION);
@@ -159,6 +173,7 @@ static int ini_get_section(char* buf)
 	else buf++;
 
 	int wc_pos = -1;
+	int eq_pos = -1;
 
 	// get section stop marker
 	while (buf[i])
@@ -170,6 +185,7 @@ static int ini_get_section(char* buf)
 		}
 
 		if (buf[i] == '*') wc_pos = i;
+		if (buf[i] == '=') eq_pos = i;
 
 		i++;
 		if (i >= INI_LINE_SIZE) return 0;
@@ -189,6 +205,20 @@ static int ini_get_section(char* buf)
 			ini_parser_debugf("Got SECTION '%s'", buf);
 		}
 		return 1;
+	}
+	else if ((eq_pos >= 0) && !strncasecmp(buf, "video", eq_pos))
+	{
+		has_video_sections = true;
+		if(!strcasecmp(&buf[eq_pos+1], vmode))
+		{
+			using_video_section = true;
+			ini_parser_debugf("Got SECTION '%s'", buf);
+			return 1;
+		}
+		else
+		{
+			return 0;
+		}
 	}
 
 	return 0;
@@ -277,13 +307,13 @@ static void ini_parse_var(char* buf)
 	}
 }
 
-static void ini_parse(int alt)
+static void ini_parse(int alt, const char *vmode)
 {
 	static char line[INI_LINE_SIZE];
 	int section = 0;
 	int eof;
 
-	ini_parser_debugf("Start INI parser for core \"%s\"(%s).", user_io_get_core_name(0), user_io_get_core_name(1));
+	ini_parser_debugf("Start INI parser for core \"%s\"(%s), video mode \"%s\".", user_io_get_core_name(0), user_io_get_core_name(1), vmode);
 
 	memset(line, 0, sizeof(line));
 	memset(&ini_file, 0, sizeof(ini_file));
@@ -305,11 +335,11 @@ static void ini_parse(int alt)
 		if (line[0] == INI_SECTION_START)
 		{
 			// if first char in line is INI_SECTION_START, get section
-			section = ini_get_section(line);
+			section = ini_get_section(line, vmode);
 		}
 		else if (line[0] == INCL_SECTION && !section)
 		{
-			section = ini_get_section(line);
+			section = ini_get_section(line, vmode);
 		}
 		else if(section)
 		{
@@ -348,5 +378,20 @@ void cfg_parse()
 	cfg.controller_info = 6;
 	cfg.browse_expand = 1;
 	cfg.logo = 1;
-	ini_parse(altcfg());
+	cfg.rumble = 1;
+	cfg.wheel_force = 50;
+	cfg.dvi_mode = 2;
+	has_video_sections = false;
+	using_video_section = false;
+	ini_parse(altcfg(), video_get_core_mode_name(1));
+	if (has_video_sections && !using_video_section)
+	{
+		// second pass to look for section without vrefresh
+		ini_parse(altcfg(), video_get_core_mode_name(0));
+	}
+}
+
+bool cfg_has_video_sections()
+{
+	return has_video_sections;
 }

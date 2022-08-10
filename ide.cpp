@@ -79,12 +79,12 @@ uint8_t ide_buf[ide_io_max_size * 512];
 
 ide_config ide_inst[2] = {};
 
-uint16_t ide_check(int status)
+uint16_t ide_check()
 {
 	uint16_t res;
 	EnableIO();
 	res = spi_w(UIO_DMA_SDIO);
-	if (status || !res) res = (uint8_t)spi_w((uint16_t)status);
+	if (!res) res = (uint8_t)spi_w(0);
 	DisableIO();
 	return res;
 }
@@ -423,7 +423,7 @@ void ide_img_set(uint32_t drvnum, fileTYPE *f, int cd, int sectors, int heads, i
 	drive->cylinders = 0;
 	drive->heads = 0;
 	drive->spt = 0;
-	drive->spb = 0;
+	drive->spb = 16;
 	drive->offset = 0;
 	drive->type = 0;
 
@@ -885,11 +885,6 @@ static int handle_hdd(ide_config *ide)
 		break;
 
 	case 0xC4: // read multiple
-		if (!ide->drive[ide->regs.drv].spb)
-		{
-			printf("(!) Read multiple is disabled!\n");
-			return 1;
-		}
 		process_read(ide, 1);
 		break;
 
@@ -899,11 +894,6 @@ static int handle_hdd(ide_config *ide)
 		break;
 
 	case 0xC5: // write multiple
-		if (!ide->drive[ide->regs.drv].spb)
-		{
-			printf("(!) Read multiple is disabled!\n");
-			return 1;
-		}
 		process_write(ide, 1);
 		break;
 
@@ -923,18 +913,24 @@ static int handle_hdd(ide_config *ide)
 			return 1;
 		}
 		ide->drive[ide->regs.drv].spb = ide->regs.sector_count;
-		printf("New block size: %d\n", ide->drive[ide->regs.drv].spb);
+		dbg_printf("New block size: %d\n", ide->drive[ide->regs.drv].spb);
 		ide->regs.status = ATA_STATUS_RDY | ATA_STATUS_IRQ;
 		ide_set_regs(ide);
 		break;
 
 	case 0x08: // reset (fail)
-		printf("Reset command (08h) for HDD not supported\n");
+		dbg_printf("Reset command (08h) for HDD not supported\n");
 		return 1;
 
 	case 0x10 ... 0x1F: // recalibrate
 		ide->regs.status = ATA_STATUS_RDY | ATA_STATUS_IRQ;
 		ide->regs.cylinder = 0;
+		ide_set_regs(ide);
+		break;
+
+	case 0x40: // READ VERIFY
+		dbg_printf("Received read verify command. Not implemented but returning OK.\n");
+		ide->regs.status = ATA_STATUS_RDY | ATA_STATUS_IRQ;
 		ide_set_regs(ide);
 		break;
 
@@ -945,8 +941,8 @@ static int handle_hdd(ide_config *ide)
 		break;
 
 	default:
-		printf("(!) Unsupported command (%04X)\n", ide->base);
-		ide_print_regs(&ide->regs);
+		dbg_printf("(!) Unsupported command (%04X)\n", ide->base);
+		dbg_print_regs(&ide->regs);
 		return 1;
 	}
 
@@ -968,7 +964,7 @@ void ide_io(int num, int req)
 			ide->regs.status = ATA_STATUS_RDY;
 			ide_set_regs(ide);
 
-			printf("IDE %04X reset finish\n", ide->base);
+			dbg_printf("IDE %04X reset finish\n", ide->base);
 		}
 	}
 	else if (req == 4) // command

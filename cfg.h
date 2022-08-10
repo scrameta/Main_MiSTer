@@ -18,12 +18,12 @@ typedef struct {
 	uint8_t vga_scaler;
 	uint8_t vga_sog;
 	uint8_t hdmi_audio_96k;
-	uint8_t dvi;
+	uint8_t dvi_mode;
 	uint8_t hdmi_limited;
 	uint8_t direct_video;
 	uint8_t video_info;
-	uint8_t refresh_min;
-	uint8_t refresh_max;
+	float refresh_min;
+	float refresh_max;
 	uint8_t controller_info;
 	uint8_t vsync_adjust;
 	uint8_t kbd_nomouse;
@@ -62,12 +62,22 @@ typedef struct {
 	char video_conf_ntsc[1024];
 	char font[1024];
 	char shared_folder[1024];
+	char waitmount[1024];
 	char custom_aspect_ratio[2][16];
 	char afilter_default[1023];
 	char vfilter_default[1023];
 	char vfilter_vertical_default[1023];
 	char vfilter_scanlines_default[1023];
 	char shmask_default[1023];
+	uint8_t rumble;
+	uint8_t wheel_force;
+	uint16_t wheel_range;
+	uint8_t hdmi_game_mode;
+	uint8_t vrr_mode;
+	uint8_t vrr_min_framerate;
+	uint8_t vrr_max_framerate;
+	uint8_t vrr_vesa_framerate;
+	uint16_t video_off;
 } cfg_t;
 
 extern cfg_t cfg;
@@ -75,5 +85,6 @@ extern cfg_t cfg;
 //// functions ////
 void cfg_parse();
 const char* cfg_get_name(uint8_t alt);
+bool cfg_has_video_sections();
 
 #endif // __CFG_H__

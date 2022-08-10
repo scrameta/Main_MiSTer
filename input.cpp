@@ -27,10 +27,12 @@
 #include "video.h"
 #include "joymapping.h"
 #include "support.h"
+#include "profiling.h"
 
 #define NUMDEV 30
 #define NUMPLAYERS 6
 #define UINPUT_NAME "MiSTer virtual input"
+
 
 char joy_bnames[NUMBUTTONS][32] = {};
 int  joy_bcount = 0;
@@ -383,16 +385,16 @@ static const int ev2ps2[] =
 	0x70, //82  KEY_KP0
 	0x71, //83  KEY_KPDOT
 	NONE, //84  ???
-	NONE, //85  KEY_ZENKAKU
+	0x0e, //85  KEY_ZENKAKU
 	0x61, //86  KEY_102ND
 	0x78, //87  KEY_F11
 	0x07, //88  KEY_F12
-	NONE, //89  KEY_RO
-	NONE, //90  KEY_KATAKANA
-	NONE, //91  KEY_HIRAGANA
-	NONE, //92  KEY_HENKAN
-	NONE, //93  KEY_KATAKANA
-	NONE, //94  KEY_MUHENKAN
+	0x13, //89  KEY_RO
+	0x13, //90  KEY_KATAKANA
+	0x13, //91  KEY_HIRAGANA
+	0x64, //92  KEY_HENKAN
+	0x13, //93  KEY_KATAKANA
+	0x67, //94  KEY_MUHENKAN
 	NONE, //95  KEY_KPJPCOMMA
 	EXT | 0x5a, //96  KEY_KPENTER
 	RCTRL | EXT | 0x14, //97  KEY_RIGHTCTRL
@@ -422,10 +424,10 @@ static const int ev2ps2[] =
 	NONE, //121 KEY_KPCOMMA
 	NONE, //122 KEY_HANGEUL
 	NONE, //123 KEY_HANJA
-	NONE, //124 KEY_YEN
+	0x6a, //124 KEY_YEN
 	LGUI | EXT | 0x1f, //125 KEY_LEFTMETA
 	RGUI | EXT | 0x27, //126 KEY_RIGHTMETA
-	NONE, //127 KEY_COMPOSE
+	EXT | 0x2f, //127 KEY_COMPOSE
 	NONE, //128 KEY_STOP
 	NONE, //129 KEY_AGAIN
 	NONE, //130 KEY_PROPS
@@ -493,6 +495,266 @@ static const int ev2ps2[] =
 	NONE, //192 KEY_F22
 	NONE, //193 KEY_F23
 	0x5D, //194 U-mlaut on DE mapped to backslash
+	NONE, //195 ???
+	NONE, //196 ???
+	NONE, //197 ???
+	NONE, //198 ???
+	NONE, //199 ???
+	NONE, //200 KEY_PLAYCD
+	NONE, //201 KEY_PAUSECD
+	NONE, //202 KEY_PROG3
+	NONE, //203 KEY_PROG4
+	NONE, //204 KEY_DASHBOARD
+	NONE, //205 KEY_SUSPEND
+	NONE, //206 KEY_CLOSE
+	NONE, //207 KEY_PLAY
+	NONE, //208 KEY_FASTFORWARD
+	NONE, //209 KEY_BASSBOOST
+	NONE, //210 KEY_PRINT
+	NONE, //211 KEY_HP
+	NONE, //212 KEY_CAMERA
+	NONE, //213 KEY_SOUND
+	NONE, //214 KEY_QUESTION
+	NONE, //215 KEY_EMAIL
+	NONE, //216 KEY_CHAT
+	NONE, //217 KEY_SEARCH
+	NONE, //218 KEY_CONNECT
+	NONE, //219 KEY_FINANCE
+	NONE, //220 KEY_SPORT
+	NONE, //221 KEY_SHOP
+	NONE, //222 KEY_ALTERASE
+	NONE, //223 KEY_CANCEL
+	NONE, //224 KEY_BRIGHT_DOWN
+	NONE, //225 KEY_BRIGHT_UP
+	NONE, //226 KEY_MEDIA
+	NONE, //227 KEY_SWITCHVIDEO
+	NONE, //228 KEY_DILLUMTOGGLE
+	NONE, //229 KEY_DILLUMDOWN
+	NONE, //230 KEY_DILLUMUP
+	NONE, //231 KEY_SEND
+	NONE, //232 KEY_REPLY
+	NONE, //233 KEY_FORWARDMAIL
+	NONE, //234 KEY_SAVE
+	NONE, //235 KEY_DOCUMENTS
+	NONE, //236 KEY_BATTERY
+	NONE, //237 KEY_BLUETOOTH
+	NONE, //238 KEY_WLAN
+	NONE, //239 KEY_UWB
+	NONE, //240 KEY_UNKNOWN
+	NONE, //241 KEY_VIDEO_NEXT
+	NONE, //242 KEY_VIDEO_PREV
+	NONE, //243 KEY_BRIGHT_CYCLE
+	NONE, //244 KEY_BRIGHT_AUTO
+	NONE, //245 KEY_DISPLAY_OFF
+	NONE, //246 KEY_WWAN
+	NONE, //247 KEY_RFKILL
+	NONE, //248 KEY_MICMUTE
+	NONE, //249 ???
+	NONE, //250 ???
+	NONE, //251 ???
+	NONE, //252 ???
+	NONE, //253 ???
+	NONE, //254 ???
+	NONE  //255 ???
+};
+
+static const int ev2ps2_set1[] =
+{
+	NONE, //0   KEY_RESERVED
+	0x01, //1   KEY_ESC
+	0x02, //2   KEY_1
+	0x03, //3   KEY_2
+	0x04, //4   KEY_3
+	0x05, //5   KEY_4
+	0x06, //6   KEY_5
+	0x07, //7   KEY_6
+	0x08, //8   KEY_7
+	0x09, //9   KEY_8
+	0x0a, //10  KEY_9
+	0x0b, //11  KEY_0
+	0x0c, //12  KEY_MINUS
+	0x0d, //13  KEY_EQUAL
+	0x0e, //14  KEY_BACKSPACE
+	0x0f, //15  KEY_TAB
+	0x10, //16  KEY_Q
+	0x11, //17  KEY_W
+	0x12, //18  KEY_E
+	0x13, //19  KEY_R
+	0x14, //20  KEY_T
+	0x15, //21  KEY_Y
+	0x16, //22  KEY_U
+	0x17, //23  KEY_I
+	0x18, //24  KEY_O
+	0x19, //25  KEY_P
+	0x1a, //26  KEY_LEFTBRACE
+	0x1b, //27  KEY_RIGHTBRACE
+	0x1c, //28  KEY_ENTER
+	LCTRL | 0x1d, //29  KEY_LEFTCTRL
+	0x1e, //30  KEY_A
+	0x1f, //31  KEY_S
+	0x20, //32  KEY_D
+	0x21, //33  KEY_F
+	0x22, //34  KEY_G
+	0x23, //35  KEY_H
+	0x24, //36  KEY_J
+	0x25, //37  KEY_K
+	0x26, //38  KEY_L
+	0x27, //39  KEY_SEMICOLON  ;
+	0x28, //40  KEY_APOSTROPHE
+	0x29, //41  KEY_GRAVE
+	LSHIFT | 0x2a, //42  KEY_LEFTSHIFT
+	0x2b, //43  KEY_BACKSLASH
+	0x2c, //44  KEY_Z
+	0x2d, //45  KEY_X
+	0x2e, //46  KEY_C
+	0x2f, //47  KEY_V
+	0x30, //48  KEY_B
+	0x31, //49  KEY_N
+	0x32, //50  KEY_M
+	0x33, //51  KEY_COMMA
+	0x34, //52  KEY_DOT
+	0x35, //53  KEY_SLASH
+	RSHIFT | 0x36, //54  KEY_RIGHTSHIFT
+	0x37, //55  KEY_KPASTERISK
+	LALT | 0x38, //56  KEY_LEFTALT
+	0x39, //57  KEY_SPACE
+	0x3a, //58  KEY_CAPSLOCK
+	0x3b, //59  KEY_F1
+	0x3c, //60  KEY_F2
+	0x3d, //61  KEY_F3
+	0x3e, //62  KEY_F4
+	0x3f, //63  KEY_F5
+	0x40, //64  KEY_F6
+	0x41, //65  KEY_F7
+	0x42, //66  KEY_F8
+	0x43, //67  KEY_F9
+	0x44, //68  KEY_F10
+	EMU_SWITCH_2 | 0x45, //69  KEY_NUMLOCK
+	EMU_SWITCH_1 | 0x46, //70  KEY_SCROLLLOCK
+	0x47, //71  KEY_KP7
+	0x48, //72  KEY_KP8
+	0x49, //73  KEY_KP9
+	0x4a, //74  KEY_KPMINUS
+	0x4b, //75  KEY_KP4
+	0x4c, //76  KEY_KP5
+	0x4d, //77  KEY_KP6
+	0x4e, //78  KEY_KPPLUS
+	0x4f, //79  KEY_KP1
+	0x50, //80  KEY_KP2
+	0x51, //81  KEY_KP3
+	0x52, //82  KEY_KP0
+	0x53, //83  KEY_KPDOT
+	NONE, //84  ???
+	NONE, //85  KEY_ZENKAKU
+	0x56, //86  KEY_102ND
+	0x57, //87  KEY_F11
+	0x58, //88  KEY_F12
+	NONE, //89  KEY_RO
+	NONE, //90  KEY_KATAKANA
+	NONE, //91  KEY_HIRAGANA
+	NONE, //92  KEY_HENKAN
+	NONE, //93  KEY_KATAKANA
+	NONE, //94  KEY_MUHENKAN
+	NONE, //95  KEY_KPJPCOMMA
+	EXT | 0x1c, //96  KEY_KPENTER
+	RCTRL | EXT | 0x1d, //97  KEY_RIGHTCTRL
+	EXT | 0x35, //98  KEY_KPSLASH
+	0xE2, //99  KEY_SYSRQ
+	RALT | EXT | 0x38, //100 KEY_RIGHTALT
+	NONE, //101 KEY_LINEFEED
+	EXT | 0x47, //102 KEY_HOME
+	EXT | 0x48, //103 KEY_UP
+	EXT | 0x49, //104 KEY_PAGEUP
+	EXT | 0x4b, //105 KEY_LEFT
+	EXT | 0x4d, //106 KEY_RIGHT
+	EXT | 0x4f, //107 KEY_END
+	EXT | 0x50, //108 KEY_DOWN
+	EXT | 0x51, //109 KEY_PAGEDOWN
+	EXT | 0x52, //110 KEY_INSERT
+	EXT | 0x53, //111 KEY_DELETE
+	NONE, //112 KEY_MACRO
+	NONE, //113 KEY_MUTE
+	NONE, //114 KEY_VOLUMEDOWN
+	NONE, //115 KEY_VOLUMEUP
+	NONE, //116 KEY_POWER
+	NONE, //117 KEY_KPEQUAL
+	NONE, //118 KEY_KPPLUSMINUS
+	0xE1, //119 KEY_PAUSE
+	NONE, //120 KEY_SCALE
+	NONE, //121 KEY_KPCOMMA
+	NONE, //122 KEY_HANGEUL
+	NONE, //123 KEY_HANJA
+	NONE, //124 KEY_YEN
+	LGUI | EXT | 0x5B, //125 KEY_LEFTMETA
+	RGUI | EXT | 0x5C, //126 KEY_RIGHTMETA
+	NONE, //127 KEY_COMPOSE
+	NONE, //128 KEY_STOP
+	NONE, //129 KEY_AGAIN
+	NONE, //130 KEY_PROPS
+	NONE, //131 KEY_UNDO
+	NONE, //132 KEY_FRONT
+	NONE, //133 KEY_COPY
+	NONE, //134 KEY_OPEN
+	NONE, //135 KEY_PASTE
+	NONE, //136 KEY_FIND
+	NONE, //137 KEY_CUT
+	NONE, //138 KEY_HELP
+	NONE, //139 KEY_MENU
+	NONE, //140 KEY_CALC
+	NONE, //141 KEY_SETUP
+	NONE, //142 KEY_SLEEP
+	NONE, //143 KEY_WAKEUP
+	NONE, //144 KEY_FILE
+	NONE, //145 KEY_SENDFILE
+	NONE, //146 KEY_DELETEFILE
+	NONE, //147 KEY_XFER
+	NONE, //148 KEY_PROG1
+	NONE, //149 KEY_PROG2
+	NONE, //150 KEY_WWW
+	NONE, //151 KEY_MSDOS
+	NONE, //152 KEY_SCREENLOCK
+	NONE, //153 KEY_DIRECTION
+	NONE, //154 KEY_CYCLEWINDOWS
+	NONE, //155 KEY_MAIL
+	NONE, //156 KEY_BOOKMARKS
+	NONE, //157 KEY_COMPUTER
+	NONE, //158 KEY_BACK
+	NONE, //159 KEY_FORWARD
+	NONE, //160 KEY_CLOSECD
+	NONE, //161 KEY_EJECTCD
+	NONE, //162 KEY_EJECTCLOSECD
+	NONE, //163 KEY_NEXTSONG
+	NONE, //164 KEY_PLAYPAUSE
+	NONE, //165 KEY_PREVIOUSSONG
+	NONE, //166 KEY_STOPCD
+	NONE, //167 KEY_RECORD
+	NONE, //168 KEY_REWIND
+	NONE, //169 KEY_PHONE
+	NONE, //170 KEY_ISO
+	NONE, //171 KEY_CONFIG
+	NONE, //172 KEY_HOMEPAGE
+	NONE, //173 KEY_REFRESH
+	NONE, //174 KEY_EXIT
+	NONE, //175 KEY_MOVE
+	NONE, //176 KEY_EDIT
+	NONE, //177 KEY_SCROLLUP
+	NONE, //178 KEY_SCROLLDOWN
+	NONE, //179 KEY_KPLEFTPAREN
+	NONE, //180 KEY_KPRIGHTPAREN
+	NONE, //181 KEY_NEW
+	NONE, //182 KEY_REDO
+	NONE, //183 KEY_F13
+	NONE, //184 KEY_F14
+	NONE, //185 KEY_F15
+	NONE, //186 KEY_F16
+	EMU_SWITCH_1 | 1, //187 KEY_F17
+	EMU_SWITCH_1 | 2, //188 KEY_F18
+	EMU_SWITCH_1 | 3, //189 KEY_F19
+	EMU_SWITCH_1 | 4, //190 KEY_F20
+	NONE, //191 KEY_F21
+	NONE, //192 KEY_F22
+	NONE, //193 KEY_F23
+	0x2B, //194 U-mlaut on DE mapped to backslash
 	NONE, //195 ???
 	NONE, //196 ???
 	NONE, //197 ???
@@ -816,10 +1078,11 @@ static int ev2archie[] =
 	NONE  //255 ???
 };
 
+uint8_t ps2_kbd_scan_set = 2;
 uint32_t get_ps2_code(uint16_t key)
 {
 	if (key > 255) return NONE;
-	return ev2ps2[key];
+	return (ps2_kbd_scan_set == 1) ? ev2ps2_set1[key] : ev2ps2[key];
 }
 
 uint32_t get_amiga_code(uint16_t key)
@@ -856,6 +1119,9 @@ enum QUIRK
 	QUIRK_TOUCHGUN,
 	QUIRK_VCS,
 	QUIRK_JOYCON,
+	QUIRK_LIGHTGUN_CRT,
+	QUIRK_LIGHTGUN,
+	QUIRK_WHEEL,
 };
 
 typedef struct
@@ -885,7 +1151,7 @@ typedef struct
 	uint8_t  has_kbdmap;
 	uint8_t  kbdmap[256];
 
-	uint16_t guncal[4];
+	int32_t  guncal[4];
 
 	int      accx, accy;
 	int      startx, starty;
@@ -904,6 +1170,17 @@ typedef struct
 
 	int      lightgun_req;
 	int      lightgun;
+
+	int      has_rumble;
+	int      rumble_en;
+	uint16_t last_rumble;
+	ff_effect rumble_effect;
+
+	int8_t   wh_steer;
+	int8_t   wh_accel;
+	int8_t   wh_brake;
+	int8_t   wh_clutch;
+	int8_t   wh_combo;
 
 	int      timeout;
 	char     mac[64];
@@ -1031,6 +1308,7 @@ static void INThandler(int code)
 
 #define test_bit(bit, array)  (array [bit / 8] & (1 << (bit % 8)))
 
+
 static char has_led(int fd)
 {
 	unsigned char evtype_b[(EV_MAX + 7) / 8];
@@ -1130,6 +1408,11 @@ void start_map_setting(int cnt, int set)
 	user_io_kbd(KEY_ENTER, 0);
 }
 
+int get_map_set()
+{
+	return mapping_set;
+}
+
 int get_map_button()
 {
 	return mapping_button;
@@ -1194,19 +1477,19 @@ void finish_map_setting(int dismiss)
 	}
 }
 
-void input_lightgun_save(int idx, uint16_t *cal)
+void input_lightgun_save(int idx, int32_t *cal)
 {
 	static char name[128];
-	sprintf(name, "%s_gun_cal_%04x_%04x.cfg", user_io_get_core_name(), input[idx].vid, input[idx].pid);
-	FileSaveConfig(name, cal, 4 * sizeof(uint16_t));
+	sprintf(name, "%s_gun_cal_%04x_%04x_v2.cfg", user_io_get_core_name(), input[idx].vid, input[idx].pid);
+	FileSaveConfig(name, cal, 4 * sizeof(int32_t));
 	memcpy(input[idx].guncal, cal, sizeof(input[idx].guncal));
 }
 
 static void input_lightgun_load(int idx)
 {
 	static char name[128];
-	sprintf(name, "%s_gun_cal_%04x_%04x.cfg", user_io_get_core_name(), input[idx].vid, input[idx].pid);
-	FileLoadConfig(name, input[idx].guncal, 4 * sizeof(uint16_t));
+	sprintf(name, "%s_gun_cal_%04x_%04x_v2.cfg", user_io_get_core_name(), input[idx].vid, input[idx].pid);
+	FileLoadConfig(name, input[idx].guncal, 4 * sizeof(int32_t));
 }
 
 int input_has_lightgun()
@@ -1215,6 +1498,8 @@ int input_has_lightgun()
 	{
 		if (input[i].quirk == QUIRK_WIIMOTE)  return 1;
 		if (input[i].quirk == QUIRK_TOUCHGUN) return 1;
+		if (input[i].quirk == QUIRK_LIGHTGUN) return 1;
+		if (input[i].quirk == QUIRK_LIGHTGUN_CRT) return 1;
 	}
 	return 0;
 }
@@ -1303,6 +1588,8 @@ static uint32_t joy[NUMPLAYERS] = {};
 static uint32_t autofire[NUMPLAYERS] = {};
 static uint32_t autofirecodes[NUMPLAYERS][BTN_NUM] = {};
 static int af_delay[NUMPLAYERS] = {};
+
+static uint32_t crtgun_timeout[NUMDEV] = {};
 
 static unsigned char mouse_btn = 0; //emulated mouse
 static unsigned char mice_btn = 0;
@@ -2005,25 +2292,39 @@ static void input_cb(struct input_event *ev, struct input_absinfo *absinfo, int 
 			}
 			if (!input[dev].mmap[SYS_BTN_OSD_KTGL + 2]) input[dev].mmap[SYS_BTN_OSD_KTGL + 2] = input[dev].mmap[SYS_BTN_OSD_KTGL + 1];
 
-			if (input[dev].mmap[SYS_AXIS_X] == input[dev].mmap[SYS_AXIS1_X])
+			if (input[dev].quirk == QUIRK_WHEEL)
 			{
-				input[dev].stick_l[0] = SYS_AXIS1_X;
-				if((input[dev].mmap[SYS_AXIS2_X] >> 16) == 2) input[dev].stick_r[0] = SYS_AXIS2_X;
+				input[dev].mmap[SYS_AXIS_MX] = -1;
+				input[dev].mmap[SYS_AXIS_MY] = -1;
+				input[dev].mmap[SYS_AXIS_X] = -1;
+				input[dev].mmap[SYS_AXIS_Y] = -1;
+				input[dev].mmap[SYS_AXIS1_X] = -1;
+				input[dev].mmap[SYS_AXIS1_Y] = -1;
+				input[dev].mmap[SYS_AXIS2_X] = -1;
+				input[dev].mmap[SYS_AXIS2_Y] = -1;
 			}
-			if (input[dev].mmap[SYS_AXIS_Y] == input[dev].mmap[SYS_AXIS1_Y])
+			else
 			{
-				input[dev].stick_l[1] = SYS_AXIS1_Y;
-				if ((input[dev].mmap[SYS_AXIS2_Y] >> 16) == 2) input[dev].stick_r[1] = SYS_AXIS2_Y;
-			}
-			if (input[dev].mmap[SYS_AXIS_X] == input[dev].mmap[SYS_AXIS2_X])
-			{
-				input[dev].stick_l[0] = SYS_AXIS2_X;
-				if ((input[dev].mmap[SYS_AXIS1_X] >> 16) == 2) input[dev].stick_r[0] = SYS_AXIS1_X;
-			}
-			if (input[dev].mmap[SYS_AXIS_Y] == input[dev].mmap[SYS_AXIS2_Y])
-			{
-				input[dev].stick_l[1] = SYS_AXIS2_Y;
-				if ((input[dev].mmap[SYS_AXIS1_Y] >> 16) == 2) input[dev].stick_r[1] = SYS_AXIS1_Y;
+				if (input[dev].mmap[SYS_AXIS_X] == input[dev].mmap[SYS_AXIS1_X])
+				{
+					input[dev].stick_l[0] = SYS_AXIS1_X;
+					if ((input[dev].mmap[SYS_AXIS2_X] >> 16) == 2) input[dev].stick_r[0] = SYS_AXIS2_X;
+				}
+				if (input[dev].mmap[SYS_AXIS_Y] == input[dev].mmap[SYS_AXIS1_Y])
+				{
+					input[dev].stick_l[1] = SYS_AXIS1_Y;
+					if ((input[dev].mmap[SYS_AXIS2_Y] >> 16) == 2) input[dev].stick_r[1] = SYS_AXIS2_Y;
+				}
+				if (input[dev].mmap[SYS_AXIS_X] == input[dev].mmap[SYS_AXIS2_X])
+				{
+					input[dev].stick_l[0] = SYS_AXIS2_X;
+					if ((input[dev].mmap[SYS_AXIS1_X] >> 16) == 2) input[dev].stick_r[0] = SYS_AXIS1_X;
+				}
+				if (input[dev].mmap[SYS_AXIS_Y] == input[dev].mmap[SYS_AXIS2_Y])
+				{
+					input[dev].stick_l[1] = SYS_AXIS2_Y;
+					if ((input[dev].mmap[SYS_AXIS1_Y] >> 16) == 2) input[dev].stick_r[1] = SYS_AXIS1_Y;
+				}
 			}
 		}
 		input[dev].has_mmap++;
@@ -2552,18 +2853,21 @@ static void input_cb(struct input_event *ev, struct input_absinfo *absinfo, int 
 							}
 						}
 
-						if (input[dev].mmap[SYS_AXIS_X])
+						if (input[dev].quirk != QUIRK_WHEEL)
 						{
-							uint16_t key = KEY_EMU + ((uint16_t)input[dev].mmap[SYS_AXIS_X]*2);
-							if (ev->code == (key + 1)) joy_digital(0, 1 << 0, 0, ev->value, 0);
-							if (ev->code == key) joy_digital(0, 1 << 1, 0, ev->value, 1);
-						}
+							if (input[dev].mmap[SYS_AXIS_X])
+							{
+								uint16_t key = KEY_EMU + ((uint16_t)input[dev].mmap[SYS_AXIS_X] * 2);
+								if (ev->code == (key + 1)) joy_digital(0, 1 << 0, 0, ev->value, 0);
+								if (ev->code == key) joy_digital(0, 1 << 1, 0, ev->value, 1);
+							}
 
-						if (input[dev].mmap[SYS_AXIS_Y])
-						{
-							uint16_t key = KEY_EMU + ((uint16_t)input[dev].mmap[SYS_AXIS_Y]*2);
-							if (ev->code == (key + 1)) joy_digital(0, 1 << 2, 0, ev->value, 2);
-							if (ev->code == key) joy_digital(0, 1 << 3, 0, ev->value, 3);
+							if (input[dev].mmap[SYS_AXIS_Y])
+							{
+								uint16_t key = KEY_EMU + ((uint16_t)input[dev].mmap[SYS_AXIS_Y] * 2);
+								if (ev->code == (key + 1)) joy_digital(0, 1 << 2, 0, ev->value, 2);
+								if (ev->code == key) joy_digital(0, 1 << 3, 0, ev->value, 3);
+							}
 						}
 					}
 				}
@@ -2790,7 +3094,7 @@ static void input_cb(struct input_event *ev, struct input_absinfo *absinfo, int 
 				// normalize to -range/2...+range/2
 				value = value - (absinfo->minimum + absinfo->maximum) / 2;
 
-				if (ev->code > 1 || !input[dev].lightgun) //lightgun has no dead zone
+				if (ev->code > 1 || (!input[dev].lightgun && input[dev].quirk != QUIRK_WHEEL)) //lightgun/wheel has no dead zone
 				{
 					// check the dead-zone and remove it from the range
 					hrange -= dead;
@@ -2828,7 +3132,38 @@ static void input_cb(struct input_event *ev, struct input_absinfo *absinfo, int 
 					// skip if joystick is undefined.
 					if (!input[dev].num) break;
 
-					if (ev->code == 0 && input[dev].lightgun)
+					if (input[dev].quirk == QUIRK_WHEEL)
+					{
+						int wh_value = ((127 * (ev->value - absinfo->minimum)) / (absinfo->maximum - absinfo->minimum)) - 127;
+
+						if (ev->code == input[dev].wh_steer)
+						{
+							joy_analog(input[dev].num, 0, value, 0);
+						}
+						else if (ev->code == input[dev].wh_accel)
+						{
+							joy_analog(input[dev].num, 1, wh_value, 0);
+						}
+						else if (ev->code == input[dev].wh_brake)
+						{
+							joy_analog(input[dev].num, 1, wh_value, 1);
+						}
+						else if (ev->code == input[dev].wh_clutch)
+						{
+							joy_analog(input[dev].num, 0, wh_value, 1);
+						}
+						else if (ev->code == input[dev].wh_combo)
+						{
+							if (value < -1) joy_analog(input[dev].num, 1, value, 0);
+							else if (value > 1) joy_analog(input[dev].num, 1, -value, 1);
+							else
+							{
+								joy_analog(input[dev].num, 1, 0, 0);
+								joy_analog(input[dev].num, 1, 0, 0);
+							}
+						}
+					}
+					else if (ev->code == 0 && input[dev].lightgun)
 					{
 						joy_analog(input[dev].num, 0, value);
 					}
@@ -3597,6 +3932,219 @@ int process_joycon(int dev, input_event *ev, input_absinfo *absinfo)
 	return 0;
 }
 
+static int get_rumble_device(int player)
+{
+	for (int i = 0; i < NUMDEV; i++)
+	{
+		int dev = i;
+		if (input[i].bind >= 0) dev = input[i].bind;
+
+		if (input[dev].num == player && input[i].has_rumble)
+		{
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+static int rumble_input_device(int devnum, uint16_t strong_mag, uint16_t weak_mag, uint16_t duration = 500, uint16_t delay = 0)
+{
+	int ioret = 0;
+	if (!input[devnum].has_rumble) return 0;
+	int fd = pool[devnum].fd;
+	if (!(fd >= 0)) return 0;
+
+	if (!strong_mag && !weak_mag) //Stop rumble
+	{
+		if (input[devnum].rumble_effect.id == -1) return 1; //No uploaded effect
+
+		ioret = ioctl(fd, EVIOCRMFF, input[devnum].rumble_effect.id);
+		input[devnum].rumble_effect.id = -1; //always set to -1 even if we fail to remove it?
+		return ioret != -1;
+	}
+	else {
+		//Upload effect and then immediately play it
+		//If the effect id in the input struct is -1, it will be filled with the newly uploaded effect
+		//If it is filled with an already uploaded effect, the effect is modified in place
+		struct ff_effect *fef;
+		fef = &input[devnum].rumble_effect;
+		fef->type = FF_RUMBLE;
+
+		fef->u.rumble.strong_magnitude = strong_mag;
+		fef->u.rumble.weak_magnitude = weak_mag;
+		fef->replay.length = duration;
+		fef->replay.delay = delay;
+		ioret = ioctl(fd, EVIOCSFF, fef);
+
+		if (ioret == -1)
+		{
+			printf("RUMBLE UPLOAD FAILED %s\n", strerror(errno));
+			return 0;
+		}
+
+		//Play effect
+		struct input_event play_ev;
+		play_ev.type = EV_FF;
+		play_ev.code = input[devnum].rumble_effect.id;
+		play_ev.value = 1;
+		ioret = write(fd, (const void *)&play_ev, sizeof(play_ev));
+		return ioret != -1;
+	}
+	return 0;
+}
+
+static void set_rumble(int dev, uint16_t rumble_val)
+{
+	if (input[dev].last_rumble != rumble_val)
+	{
+		uint16_t strong_m, weak_m;
+
+		strong_m = (rumble_val & 0xFF00) + (rumble_val >> 8);
+		weak_m = (rumble_val << 8) + (rumble_val & 0x00FF);
+
+		rumble_input_device(dev, strong_m, weak_m, 0x7FFF);
+		input[dev].last_rumble = rumble_val;
+	}
+}
+
+static void set_wheel_range(int dev, int range)
+{
+	static char path[1024];
+	if (range && input[dev].sysfs[0])
+	{
+		sprintf(path, "/sys%s/device/range", input[dev].sysfs);
+
+		FILE* f = fopen(path, "w");
+		if (f)
+		{
+			fprintf(f, "%d", range);
+			fclose(f);
+		}
+	}
+}
+
+static void setup_wheels()
+{
+	if (cfg.wheel_force > 100) cfg.wheel_force = 100;
+
+	for (int i = 0; i < NUMDEV; i++)
+	{
+		if (pool[i].fd != -1)
+		{
+			input[i].wh_steer = 0;
+			input[i].wh_accel = -1;
+			input[i].wh_brake = -1;
+			input[i].wh_clutch = -1;
+			input[i].wh_combo = -1;
+
+			// Logitech Wheels
+			if (input[i].vid == 0x046d)
+			{
+				switch (input[i].pid)
+				{
+				case 0xc299: // LOGITECH_G25_WHEEL
+				case 0xc29b: // LOGITECH_G27_WHEEL
+				case 0xc24f: // LOGITECH_G29_WHEEL
+					input[i].wh_accel = 2;
+					input[i].wh_brake = 5;
+					input[i].wh_clutch = 1;
+					input[i].quirk = QUIRK_WHEEL;
+					break;
+
+				case 0xc294: // LOGITECH_WHEEL
+					input[i].wh_combo = 1;
+					input[i].quirk = QUIRK_WHEEL;
+					break;
+
+				case 0xc298: // LOGITECH_DFP_WHEEL
+					input[i].wh_accel = 1;
+					input[i].wh_brake = 5;
+					input[i].quirk = QUIRK_WHEEL;
+					break;
+
+				case 0xc29a: // LOGITECH_DFGT_WHEEL
+					input[i].wh_accel = 1;
+					input[i].wh_brake = 2;
+					input[i].quirk = QUIRK_WHEEL;
+					break;
+
+				//case 0xc262: // LOGITECH_G920_WHEEL
+				//case 0xc295: // LOGITECH_MOMO_WHEEL
+				}
+
+				if (input[i].quirk == QUIRK_WHEEL)
+				{
+					struct input_event ie = {};
+					ie.type = EV_FF;
+					ie.code = FF_AUTOCENTER;
+					ie.value = 0xFFFFUL * cfg.wheel_force / 100;
+					write(pool[i].fd, &ie, sizeof(ie));
+
+					set_wheel_range(i, cfg.wheel_range);
+				}
+			}
+
+			// Fanatec Wheels
+			else if (input[i].vid == 0x0eb7)
+			{
+				switch (input[i].pid)
+				{
+				case 0x0004:   // CLUBSPORT_V25_WHEELBASE_DEVICE_ID
+				case 0x0006:   // PODIUM_WHEELBASE_DD1_DEVICE_ID
+				case 0x0007:   // PODIUM_WHEELBASE_DD2_DEVICE_ID
+					input[i].wh_accel = 2;
+					input[i].wh_brake = 5;
+					input[i].wh_clutch = 1;
+					input[i].quirk = QUIRK_WHEEL;
+					break;
+
+				//case 0x0001: // CLUBSPORT_V2_WHEELBASE_DEVICE_ID
+				//case 0x0005: // CSL_ELITE_PS4_WHEELBASE_DEVICE_ID
+				//case 0x0011: // CSR_ELITE_WHEELBASE_DEVICE_ID
+				//case 0x0020: // CSL_DD_WHEELBASE_DEVICE_ID
+				//case 0x0E03: // CSL_ELITE_WHEELBASE_DEVICE_ID
+				}
+
+				if (input[i].quirk == QUIRK_WHEEL)
+				{
+					struct ff_effect fef;
+					fef.type = FF_SPRING;
+					fef.id = -1;
+					fef.u.condition[0].right_saturation = 0xFFFFUL * cfg.wheel_force / 100;
+					fef.u.condition[0].left_saturation = 0xFFFFUL * cfg.wheel_force / 100;
+					fef.u.condition[0].right_coeff = 0x7FFF;
+					fef.u.condition[0].left_coeff = 0x7FFF;
+					fef.u.condition[0].deadband = 0x0;
+					fef.u.condition[0].center = 0x0;
+					fef.u.condition[1] = fef.u.condition[0];
+					fef.replay.delay = 0;
+
+					if (ioctl(pool[i].fd, EVIOCSFF, &fef) >= 0)
+					{
+						struct input_event play_ev;
+						play_ev.type = EV_FF;
+						play_ev.code = fef.id;
+						play_ev.value = 1;
+						write(pool[i].fd, (const void *)&play_ev, sizeof(play_ev));
+					}
+
+					set_wheel_range(i, cfg.wheel_range);
+				}
+			}
+
+			//Namco NeGcon via RetroZord adapter
+			else if (input[i].vid == 0x2341 && input[i].pid == 0x8036 && strstr(input[i].name, "RZordPsWheel"))
+			{
+				input[i].wh_accel = 6;
+				input[i].wh_brake = 10;
+				input[i].wh_clutch = 2;
+				input[i].quirk = QUIRK_WHEEL;
+			}
+		}
+	}
+}
+
 int input_test(int getchar)
 {
 	static char cur_leds = 0;
@@ -3683,11 +4231,30 @@ int input_test(int getchar)
 						if (!strcmp(input[n].name, UINPUT_NAME))
 						{
 							close(pool[n].fd);
+
 							pool[n].fd = -1;
 							continue;
 						}
 
 						input[n].bind = -1;
+
+						int effects;
+						input[n].has_rumble = false;
+						if (cfg.rumble)
+						{
+							if (ioctl(fd, EVIOCGEFFECTS, &effects) >= 0)
+							{
+								unsigned char ff_features[(FF_MAX + 7) / 8] = {};
+
+								if (ioctl(fd, EVIOCGBIT(EV_FF, sizeof(ff_features)), ff_features) != -1)
+								{
+									if (test_bit(FF_RUMBLE, ff_features)) {
+										input[n].rumble_effect.id = -1;
+										input[n].has_rumble = true;
+									}
+								}
+							}
+						}
 
 						// enable scroll wheel reading
 						if (input[n].mouse)
@@ -3801,6 +4368,54 @@ int input_test(int getchar)
 							input[n].lightgun = 1;
 						}
 
+						//Namco Guncon via RetroZord adapter
+						if (input[n].vid == 0x2341 && input[n].pid == 0x8036 && (strstr(uniq, "RZordPsGun") || strstr(input[n].name, "RZordPsGun")))
+						{
+							input[n].quirk = QUIRK_LIGHTGUN;
+							input[n].lightgun = 1;
+							input[n].guncal[0] = 0;
+							input[n].guncal[1] = 32767;
+							input[n].guncal[2] = 0;
+							input[n].guncal[3] = 32767;
+							input_lightgun_load(n);
+						}
+
+						//Namco GunCon 2
+						if (input[n].vid == 0x0b9a && input[n].pid == 0x016a)
+						{
+							input[n].quirk = QUIRK_LIGHTGUN_CRT;
+							input[n].lightgun = 1;
+							input[n].guncal[0] = 25;
+							input[n].guncal[1] = 245;
+							input[n].guncal[2] = 145;
+							input[n].guncal[3] = 700;
+							input_lightgun_load(n);
+						}
+
+						//Namco GunCon 3
+						if (input[n].vid == 0x0b9a && input[n].pid == 0x0800)
+						{
+							input[n].quirk = QUIRK_LIGHTGUN;
+							input[n].lightgun = 1;
+							input[n].guncal[0] = -32768;
+							input[n].guncal[1] = 32767;
+							input[n].guncal[2] = -32768;
+							input[n].guncal[3] = 32767;
+							input_lightgun_load(n);
+						}
+
+						//GUN4IR Lightgun
+						if (input[n].vid == 0x2341 && input[n].pid >= 0x8042 && input[n].pid <= 0x8049)
+						{
+							input[n].quirk = QUIRK_LIGHTGUN;
+							input[n].lightgun = 1;
+							input[n].guncal[0] = 0;
+							input[n].guncal[1] = 32767;
+							input[n].guncal[2] = 0;
+							input[n].guncal[3] = 32767;
+							input_lightgun_load(n);
+						}
+
 						//Madcatz Arcade Stick 360
 						if (input[n].vid == 0x0738 && input[n].pid == 0x4758) input[n].quirk = QUIRK_MADCATZ360;
 
@@ -3870,6 +4485,7 @@ int input_test(int getchar)
 
 			mergedevs();
 			check_joycon();
+			setup_wheels();
 			for (int i = 0; i < n; i++)
 			{
 				printf("opened %d(%2d): %s (%04x:%04x) %d \"%s\" \"%s\"\n", i, input[i].bind, input[i].devname, input[i].vid, input[i].pid, input[i].quirk, input[i].id, input[i].name);
@@ -3916,6 +4532,20 @@ int input_test(int getchar)
 
 		while (1)
 		{
+			if (cfg.rumble && !is_menu())
+			{
+				for (int i = 0; i < NUMDEV; i++)
+				{
+					if (!input[i].has_rumble) continue;
+
+					int dev = i;
+					if (input[i].bind >= 0) dev = input[i].bind;
+					if (!input[dev].num) continue;
+
+					set_rumble(i, spi_uio_cmd(UIO_GET_RUMBLE | ((input[dev].num - 1) << 8)));
+				}
+			}
+
 			int return_value = poll(pool, NUMDEV + 3, timeout);
 			if (!return_value) break;
 
@@ -3940,10 +4570,13 @@ int input_test(int getchar)
 			for (int pos = 0; pos < NUMDEV; pos++)
 			{
 				int i = pos;
+
+
 				if ((pool[i].fd >= 0) && (pool[i].revents & POLLIN))
 				{
 					if (!input[i].mouse)
 					{
+
 						memset(&ev, 0, sizeof(ev));
 						if (read(pool[i].fd, &ev, sizeof(ev)) == sizeof(ev))
 						{
@@ -4179,16 +4812,16 @@ int input_test(int getchar)
 										break;
 
 									case EV_REL:
+									{
+										//limit the amount of EV_REL messages, so Menu core won't be laggy
+										static unsigned long timeout = 0;
+										if (!timeout || CheckTimer(timeout))
 										{
-											//limit the amount of EV_REL messages, so Menu core won't be laggy
-											static unsigned long timeout = 0;
-											if (!timeout || CheckTimer(timeout))
-											{
-												timeout = GetTimer(20);
-												printf("%04x:%04x:%02d P%d Input event: type=EV_REL, Axis=%d, Offset=%d\n", input[dev].vid, input[dev].pid, i, input[dev].num, ev.code, ev.value);
-											}
+											timeout = GetTimer(20);
+											printf("%04x:%04x:%02d P%d Input event: type=EV_REL, Axis=%d, Offset=%d\n", input[dev].vid, input[dev].pid, i, input[dev].num, ev.code, ev.value);
 										}
-										break;
+									}
+									break;
 
 									case EV_SYN:
 									case EV_MSC:
@@ -4196,35 +4829,48 @@ int input_test(int getchar)
 
 										//analog joystick
 									case EV_ABS:
+									{
+										//limit the amount of EV_ABS messages, so Menu core won't be laggy
+										static unsigned long timeout = 0;
+										if (!timeout || CheckTimer(timeout))
 										{
-											//limit the amount of EV_ABS messages, so Menu core won't be laggy
-											static unsigned long timeout = 0;
-											if (!timeout || CheckTimer(timeout))
+											timeout = GetTimer(20);
+
+											//reduce flood from DUALSHOCK 3/4
+											if ((input[i].quirk == QUIRK_DS4 || input[i].quirk == QUIRK_DS3) && ev.code <= 5 && ev.value > 118 && ev.value < 138)
 											{
-												timeout = GetTimer(20);
-
-												//reduce flood from DUALSHOCK 3/4
-												if ((input[i].quirk == QUIRK_DS4 || input[i].quirk == QUIRK_DS3) && ev.code <= 5 && ev.value > 118 && ev.value < 138)
-												{
-													break;
-												}
-
-												//aliexpress USB encoder floods messages
-												if (input[dev].vid == 0x0079 && input[dev].pid == 0x0006)
-												{
-													if (ev.code == 2) break;
-												}
-
-												printf("%04x:%04x:%02d P%d Input event: type=EV_ABS, Axis=%d [%d...%d], Offset=%d", input[dev].vid, input[dev].pid, i, input[dev].num, ev.code, absinfo.minimum, absinfo.maximum, ev.value);
-												//if (absinfo.fuzz) printf(", fuzz = %d", absinfo.fuzz);
-												if (absinfo.resolution) printf(", res = %d", absinfo.resolution);
-												printf("\n");
+												break;
 											}
+
+											//aliexpress USB encoder floods messages
+											if (input[dev].vid == 0x0079 && input[dev].pid == 0x0006)
+											{
+												if (ev.code == 2) break;
+											}
+
+											printf("%04x:%04x:%02d P%d Input event: type=EV_ABS, Axis=%d [%d...%d], Offset=%d", input[dev].vid, input[dev].pid, i, input[dev].num, ev.code, absinfo.minimum, absinfo.maximum, ev.value);
+											//if (absinfo.fuzz) printf(", fuzz = %d", absinfo.fuzz);
+											if (absinfo.resolution) printf(", res = %d", absinfo.resolution);
+											printf("\n");
 										}
-										break;
+									}
+									break;
 
 									default:
 										printf("%04x:%04x:%02d P%d Input event: type=%d, code=%d(0x%x), value=%d(0x%x)\n", input[dev].vid, input[dev].pid, i, input[dev].num, ev.type, ev.code, ev.code, ev.value, ev.value);
+									}
+
+									if (ev.type == EV_KEY && input[dev].num)
+									{
+										if (ev.code == (input[dev].mmap[SYS_BTN_L] & 0xFFFF)) input[dev].rumble_en = ev.value;
+
+										int n = get_rumble_device(input[dev].num);
+										if (n >= 0 && (input[dev].rumble_en || !ev.value))
+										{
+											uint16_t rumble_val = input[n].last_rumble;
+											if (ev.code == (input[dev].mmap[SYS_BTN_X] & 0xFFFF)) set_rumble(n, (rumble_val & 0xFF00) | ((ev.value) ? 0xFF : 0x00));
+											if (ev.code == (input[dev].mmap[SYS_BTN_Y] & 0xFFFF)) set_rumble(n, (rumble_val & 0xFF) | ((ev.value) ? 0xFF00 : 0x00));
+										}
 									}
 								}
 
@@ -4247,9 +4893,79 @@ int input_test(int getchar)
 									}
 								}
 
+								if (ev.type == EV_ABS && input[i].quirk == QUIRK_LIGHTGUN)
+								{
+									menu_lightgun_cb(i, ev.type, ev.code, ev.value);
+
+									if (ev.code == ABS_X)
+									{
+										absinfo.minimum = input[i].guncal[2];
+										absinfo.maximum = input[i].guncal[3];
+									}
+									else if (ev.code == ABS_Y)
+									{
+										absinfo.minimum = input[i].guncal[0];
+										absinfo.maximum = input[i].guncal[1];
+									}
+								}
+
+								if (ev.type == EV_ABS && input[i].quirk == QUIRK_LIGHTGUN_CRT)
+								{
+									menu_lightgun_cb(i, ev.type, ev.code, ev.value);
+
+									if (ev.code == ABS_X)
+									{
+										absinfo.minimum = input[i].guncal[2];
+										absinfo.maximum = input[i].guncal[3];
+
+										// When the gun loses tracking, give it a short grace period
+										// before passing through the off-screen coordinates.
+										// The GunCon 1 and 2 both report out-of-screen x values
+										// more reliably than Y values, so X is used here.
+										if (ev.value < absinfo.minimum || ev.value > absinfo.maximum)
+										{
+											// Grace period of 50 ms. Longer times here make guns a bit
+											// more reliable on dark screens, but introduce lag to any mechanics
+											// where you want to shoot offscreen (e.g., to reload.)
+											if (!crtgun_timeout[i]) crtgun_timeout[i] = GetTimer(50);
+										}
+										else
+										{
+											crtgun_timeout[i] = 0;
+											input[i].lastx = ev.value;
+										}
+										// For the window between losing the gun signal and the timer
+										// running out, report the last on-screen coordinate
+										if (crtgun_timeout[i] && !CheckTimer(crtgun_timeout[i]))
+										{
+											ev.value = input[i].lastx;
+										}
+									}
+									else if (ev.code == ABS_Y)
+									{
+										absinfo.minimum = input[i].guncal[0];
+										absinfo.maximum = input[i].guncal[1];
+
+										// Handle gun going off-screen
+										if (crtgun_timeout[i])
+										{
+											// For the window between losing the gun signal and the timer
+											// running out, report the last on-screen coordinate
+											if (!CheckTimer(crtgun_timeout[i]))
+											{
+												ev.value = input[i].lasty;
+											}
+										}
+										else
+										{
+											input[i].lasty = ev.value;
+										}
+									}
+								}
+
 								if (ev.type == EV_KEY && user_io_osd_is_visible())
 								{
-									if (input[i].quirk == QUIRK_WIIMOTE)
+									if (input[i].quirk == QUIRK_WIIMOTE || input[i].quirk == QUIRK_LIGHTGUN_CRT || input[i].quirk == QUIRK_LIGHTGUN)
 									{
 										if (menu_lightgun_cb(i, ev.type, ev.code, ev.value)) continue;
 									}
@@ -4412,8 +5128,7 @@ int input_test(int getchar)
 					if (!strncmp(cmd, "fb_cmd", 6)) video_cmd(cmd);
 					else if (!strncmp(cmd, "load_core ", 10))
 					{
-						len = strlen(cmd);
-						if (len > 4 && !strcasecmp(cmd + len - 4, ".mra")) arcade_load(cmd + 10);
+						if(isXmlName(cmd)) xml_load(cmd + 10);
 						else fpga_load_rbf(cmd + 10);
 					}
 					else if (!strncmp(cmd, "screenshot", 10))
@@ -4464,6 +5179,8 @@ int input_test(int getchar)
 
 int input_poll(int getchar)
 {
+	PROFILE_FUNCTION();
+
 	static int af[NUMPLAYERS] = {};
 	static uint32_t time[NUMPLAYERS] = {};
 	static uint32_t joy_prev[NUMPLAYERS] = {};

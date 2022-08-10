@@ -36,7 +36,7 @@ static void setFilter()
 	snprintf(filter_cfg_path, sizeof(filter_cfg_path), AFILTER_DIR"/%s", filter_cfg + 1);
 	if(filter_cfg[0]) printf("\nLoading audio filter: %s\n", filter_cfg_path);
 
-	if (filter_cfg[0] && FileOpen(&f, filter_cfg_path))
+	if (filter_cfg[0] && FileExists(filter_cfg_path) && FileOpen(&f, filter_cfg_path))
 	{
 		char *buf = (char*)malloc(f.size + 1);
 		if (buf)
@@ -234,12 +234,19 @@ int audio_filter_en()
 	return has_filter ? filter_cfg[0] : -1;
 }
 
-char* audio_get_filter()
+char* audio_get_filter(int only_name)
 {
-	return filter_cfg + 1;
+	char *path = filter_cfg + 1;
+	if (only_name)
+	{
+		char *p = strrchr(path, '/');
+		if (p) return p + 1;
+	}
+	return path;
+
 }
 
-void audio_set_filter(char *name)
+void audio_set_filter(const char *name)
 {
 	strcpy(filter_cfg + 1, name);
 	sprintf(filter_cfg_path, "%s_afilter.cfg", user_io_get_core_name());

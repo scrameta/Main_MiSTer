@@ -486,7 +486,7 @@ void pcecdd_t::CommandExec() {
 			SendStatus(MAKE_STATUS(PCECD_STATUS_GOOD, 0));
 		}
 
-		printf("\x1b[32mPCECD: Command TESTUNIT, state = %u\n\x1b[0m", state);
+		// printf("\x1b[32mPCECD: Command TESTUNIT, state = %u\n\x1b[0m", state);
 		break;
 
 	case PCECD_COMM_REQUESTSENSE:
@@ -516,11 +516,13 @@ void pcecdd_t::CommandExec() {
 		switch (comm[1]) {
 		case 0:
 		default:
-			buf[0] = 2;
+			buf[0] = 4;
 			buf[1] = 0 | 0x80;
 			buf[2] = 1;
 			buf[3] = BCD(this->toc.last);
-			len = 2 + 2;
+			buf[4] = 0;
+			buf[5] = 0;
+			len = 4 + 2;
 			break;
 
 		case 1:
@@ -756,7 +758,7 @@ void pcecdd_t::CommandExec() {
 		buf[7] = BCD(msf.s);
 		buf[8] = BCD(msf.f);
 
-		LBAToMSF(this->lba, &msf);
+		LBAToMSF(this->lba+150, &msf);
 		buf[9] = BCD(msf.m);
 		buf[10] = BCD(msf.s);
 		buf[11] = BCD(msf.f);

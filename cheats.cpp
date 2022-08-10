@@ -19,8 +19,26 @@
 
 struct cheat_rec_t
 {
-	char enabled;
+	bool enabled;
 	char name[256];
+	int cheatSize;
+	char *cheatData;
+
+	cheat_rec_t()
+	{
+		this->enabled = false;
+		this->cheatData = NULL;
+		this->cheatSize = 0;
+		memset(name, 0, sizeof(name));
+	}
+
+	~cheat_rec_t()
+	{
+		if (this->cheatData)
+		{
+			delete[] this->cheatData;
+		}
+	}
 };
 
 typedef std::vector<cheat_rec_t> CheatVector;
@@ -122,6 +140,36 @@ static int find_in_same_dir(const char *name)
 	return 0;
 }
 
+
+bool cheat_init_psx(mz_zip_archive* _z, const char* rom_path)
+{
+	// lookup based on file name
+	const char *rom_name = strrchr(rom_path, '/');
+	if (rom_name)
+	{
+		sprintf(cheat_zip, "%s/cheats/%s%s", getRootDir(), CoreName, rom_name);
+		char *p = strrchr(cheat_zip, '.');
+		if (p) *p = 0;
+		strcat(cheat_zip, ".zip");
+		printf("Trying cheat file: %s\n", cheat_zip);
+
+		memset(_z, 0, sizeof(mz_zip_archive));
+		if (mz_zip_reader_init_file(_z, cheat_zip, 0)) return true;
+	}
+
+	// lookup based on game ID
+	const char* game_id = psx_get_game_id();
+	if (game_id && game_id[0])
+	{
+		sprintf(cheat_zip, "%s/cheats/%s/%s.zip", getRootDir(), CoreName, psx_get_game_id());
+		printf("Trying cheat file: %s\n", cheat_zip);
+		memset(_z, 0, sizeof(mz_zip_archive));
+		if (mz_zip_reader_init_file(_z, cheat_zip, 0)) return true;
+	}
+
+	return false;
+}
+
 void cheats_init(const char *rom_path, uint32_t romcrc)
 {
 	cheats.clear();
@@ -143,7 +191,16 @@ void cheats_init(const char *rom_path, uint32_t romcrc)
 	}
 
 	mz_zip_archive _z = {};
-	if (!mz_zip_reader_init_file(&_z, cheat_zip, 0))
+
+	if (is_psx() && !mz_zip_reader_init_file(&_z, cheat_zip, 0))
+	{
+		if (!cheat_init_psx(&_z, rom_path))
+		{
+			printf("no cheat file found\n");
+			return;
+		}
+	}
+	else if (!mz_zip_reader_init_file(&_z, cheat_zip, 0))
 	{
 		memset(&_z, 0, sizeof(_z));
 		if (!(pcecd_using_cd() || is_megacd()) || !find_in_same_dir(rom_path) || !mz_zip_reader_init_file(&_z, cheat_zip, 0))
@@ -220,7 +277,7 @@ void cheats_scan(int mode)
 	{
 		if (!cheats_available()) return;
 
-		if (mode == SCANF_END)
+		if (mode == SCANF_END || (mode == SCANF_PREV && iSelectedEntry <= 0))
 		{
 			iSelectedEntry = cheats_available() - 1;
 			iFirstEntry = iSelectedEntry - OsdGetSize() + 1;
@@ -232,6 +289,12 @@ void cheats_scan(int mode)
 			{
 				iSelectedEntry++;
 				if (iSelectedEntry > iFirstEntry + OsdGetSize() - 1) iFirstEntry = iSelectedEntry - OsdGetSize() + 1;
+			}
+			else
+			{
+				// jump to first visible item
+				iFirstEntry = 0;
+				iSelectedEntry = 0;
 			}
 		}
 		else if (mode == SCANF_PREV)
@@ -350,54 +413,31 @@ void cheats_print()
 
 static void cheats_send()
 {
-	static char filename[1024];
 	static uint8_t buff[CHEAT_SIZE];
 	int pos = 0;
+
 	for (int i = 0; i < cheats_available(); i++)
 	{
-		fileTYPE f = {};
 		if (cheats[i].enabled)
 		{
-			snprintf(filename, sizeof(filename), "%s/%s", cheat_zip, cheats[i].name);
-			if (FileOpen(&f, filename))
+			if (cheats[i].cheatData)
 			{
-				int len = f.size;
-				if (!len || (len & 15))
-				{
-					printf("Cheat file %s has incorrect length %d -> skipping.", filename, len);
-				}
-				else
-				{
-					if (len + pos > CHEAT_SIZE)
-					{
-						len = CHEAT_SIZE - pos;
-					}
-
-					if (FileReadAdv(&f, buff + pos, len) == len)
-					{
-						pos += len;
-					}
-					else
-					{
-						printf("Cannot read cheat file %s.", filename);
-					}
-				}
-				FileClose(&f);
+				memcpy(&buff[pos],cheats[i].cheatData,cheats[i].cheatSize);
+				pos += cheats[i].cheatSize;
 			}
 			else
 			{
-				printf("Cannot open cheat file %s.", filename);
+				printf("Consistency error, memory for cheat not allocated, but cheat was enabled -> disable.\n");
+				cheats[i].cheatSize = 0;
+				cheats[i].enabled = false;
 			}
 		}
-
-		if (pos >= CHEAT_SIZE) break;
 	}
 
 	loaded = pos / 16;
 	printf("Cheat codes: %d\n", loaded);
 
 	user_io_set_index(255);
-
 	user_io_set_download(1);
 	user_io_file_tx_data(buff, pos ? pos : 2);
 	user_io_set_download(0);
@@ -405,8 +445,83 @@ static void cheats_send()
 
 void cheats_toggle()
 {
-	cheats[iSelectedEntry].enabled = !cheats[iSelectedEntry].enabled;
-	cheats_send();
+	bool changedCheats = false;
+
+	if (cheats[iSelectedEntry].enabled == true)
+	{
+		/* disabled loaded cheat, free data */
+		if (cheats[iSelectedEntry].cheatData)
+		{
+			delete[] cheats[iSelectedEntry].cheatData;
+			cheats[iSelectedEntry].cheatData = NULL;
+		}
+
+		cheats[iSelectedEntry].enabled = false;
+		cheats[iSelectedEntry].cheatSize = 0;
+		changedCheats = true;
+	}
+	else
+	{
+		/* enabled cheat, load data */
+		static char filename[1024];
+		fileTYPE f = {};
+
+		if (cheats[iSelectedEntry].cheatData)
+		{
+			printf("Consistency error, memory for cheat already allocated -> cleanup.\n");
+			delete[] cheats[iSelectedEntry].cheatData;
+			cheats[iSelectedEntry].cheatData = NULL;
+			cheats[iSelectedEntry].cheatSize = 0;
+		}
+
+		snprintf(filename, sizeof(filename), "%s/%s", cheat_zip, cheats[iSelectedEntry].name);
+		if (FileOpen(&f, filename))
+		{
+			int len = f.size;
+			if (!len || (len & 15))
+			{
+				printf("Cheat file %s has incorrect length %d -> skipping.\n", filename, len);
+			}
+			else if ( (len + cheats_loaded()*16) <= CHEAT_SIZE )
+			{
+				cheats[iSelectedEntry].cheatData = new char[len];
+				if (cheats[iSelectedEntry].cheatData)
+				{
+					if (FileReadAdv(&f, cheats[iSelectedEntry].cheatData, len) == len)
+					{
+						cheats[iSelectedEntry].cheatSize = len;
+						cheats[iSelectedEntry].enabled = true;
+						changedCheats = true;
+					}
+					else
+					{
+						printf("Cannot read cheat file %s.\n", filename);
+						delete[] cheats[iSelectedEntry].cheatData;
+						cheats[iSelectedEntry].cheatData = NULL;
+						cheats[iSelectedEntry].cheatSize = 0;
+					}
+				}
+				else
+				{
+					printf("Could not allocate required memory (%d) for cheat file %s.\n",len,filename);
+				}
+			}
+			else
+			{
+				printf("No more room in current selection for cheat file %s.\n", filename);
+			}
+			FileClose(&f);
+		}
+		else
+		{
+			printf("Cannot open cheat file %s.\n", filename);
+		}
+	}
+
+	if (changedCheats)
+	{
+		cheats_send();
+	}
 }
 
 int cheats_loaded()
